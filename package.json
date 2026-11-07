@@ -1,7 +1,7 @@
 {
   "name": "chatroom",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@hookform/resolvers": "^7.0.3",
@@ -36,7 +36,17 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "test": "jest && node --test \"supabase/tests/*.test.mjs\"",
+    "test:app": "jest",
+    "test:db": "node --test \"supabase/tests/*.test.mjs\"",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write app src __tests__ supabase/tests"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
   },
   "private": true
 }
