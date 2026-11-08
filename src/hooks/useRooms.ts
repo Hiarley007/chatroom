@@ -3,19 +3,19 @@ import { useAuth } from '@/context/AuthContext';
 import {
   createRoom,
   getRoom,
-joinRoom,
+  joinRoom,
   leaveRoom,
   listMyRoomIds,
   listRoomMembers,
   listRooms,
 } from '@/services/rooms';
- 
+
 export const useRooms = () =>
   useQuery({ queryKey: ['rooms', 'list'], queryFn: listRooms });
- 
+
 export const useMyRoomIds = () =>
   useQuery({ queryKey: ['rooms', 'mine'], queryFn: listMyRoomIds });
- 
+
 export function useRoom(id: string | undefined) {
   return useQuery({
     queryKey: ['rooms', 'detail', id],
@@ -23,7 +23,7 @@ export function useRoom(id: string | undefined) {
     enabled: Boolean(id),
   });
 }
- 
+
 export function useRoomMembers(id: string | undefined) {
   return useQuery({
     queryKey: ['rooms', 'members', id],
@@ -31,7 +31,7 @@ export function useRoomMembers(id: string | undefined) {
     enabled: Boolean(id),
   });
 }
- 
+
 export function useCreateRoom() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -51,7 +51,7 @@ export function useCreateRoom() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   });
 }
- 
+
 export function useJoinRoom() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -63,7 +63,7 @@ export function useJoinRoom() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   });
 }
- 
+
 export function useLeaveRoom() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -72,6 +72,6 @@ export function useLeaveRoom() {
       if (!user) throw new Error('Faça login para sair da sala.');
       return leaveRoom(roomId, user.id);
     },
-onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   });
 }

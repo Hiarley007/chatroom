@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 import { colors } from '@/theme';
 import type { IconName } from '@/utils/icons';
- 
+
 function tabIcon(name: IconName) {
   return ({ color, size }: { color: ColorValue; size: number }) => (
     <Ionicons
@@ -13,7 +13,7 @@ function tabIcon(name: IconName) {
     />
   );
 }
- 
+
 export default function TabsLayout() {
   return (
     <Tabs

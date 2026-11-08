@@ -1,12 +1,12 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
- 
+
 interface InputProps extends TextInputProps {
   label: string;
   error?: string;
 }
- 
+
 export function Input({ label, error, style, ...rest }: InputProps) {
   return (
     <View style={styles.wrapper}>
@@ -20,7 +20,7 @@ export function Input({ label, error, style, ...rest }: InputProps) {
     </View>
   );
 }
- 
+
 const styles = StyleSheet.create({
   wrapper: { marginBottom: spacing.md },
   label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 6 },

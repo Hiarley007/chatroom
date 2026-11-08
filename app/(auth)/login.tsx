@@ -12,7 +12,7 @@ import { loginSchema } from '@/schemas/auth';
 import type { LoginFormData } from '@/schemas/auth';
 import { colors, spacing } from '@/theme';
 import { friendlyError } from '@/utils/errors';
- 
+
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export default function LoginScreen() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
- 
+
   const submit = handleSubmit(async (values) => {
     setFormError(null);
     try {
@@ -30,7 +30,7 @@ export default function LoginScreen() {
       setFormError(friendlyError(error));
     }
   });
- 
+
   return (
     <Screen scroll>
       <View style={styles.header}>
@@ -38,7 +38,7 @@ export default function LoginScreen() {
         <Text style={styles.title}>ChatRoom</Text>
         <Text style={styles.subtitle}>Converse em tempo real, em salas</Text>
       </View>
- 
+
       <FormInput
         control={control}
         name="email"
@@ -48,7 +48,7 @@ export default function LoginScreen() {
         keyboardType="email-address"
         autoComplete="email"
       />
-<FormInput
+      <FormInput
         control={control}
         name="password"
         label="Senha"
@@ -56,11 +56,11 @@ export default function LoginScreen() {
         secureTextEntry
         autoComplete="password"
       />
- 
+
       {formError ? <Text style={styles.error}>{formError}</Text> : null}
- 
+
       <Button title="Entrar" onPress={submit} loading={formState.isSubmitting} />
- 
+
       <Link href="/register" style={styles.link}>
         Não tem conta? <Text style={styles.linkStrong}>Cadastre-se</Text>
       </Link>

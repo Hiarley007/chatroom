@@ -7,7 +7,7 @@ const PALETTE = [
   '#DC2626',
   '#0891B2',
 ];
- 
+
 // Cor determinística a partir de um id: o mesmo usuário sempre recebe a
 // mesma cor, sem precisar guardar isso em lugar nenhum.
 export function colorForId(id: string): string {
@@ -15,7 +15,7 @@ export function colorForId(id: string): string {
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return PALETTE[hash % PALETTE.length];
 }
- 
+
 // Iniciais para o avatar: "Ana Souza" -> "AS", "ana" -> "A".
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);

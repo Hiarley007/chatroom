@@ -3,13 +3,13 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Edge } from 'react-native-safe-area-context';
 import { colors, spacing } from '@/theme';
- 
+
 interface ScreenProps {
   children: ReactNode;
   scroll?: boolean;
   edges?: Edge[];
 }
- 
+
 export function Screen({
   children,
   scroll = false,
@@ -35,7 +35,7 @@ export function Screen({
     </SafeAreaView>
   );
 }
- 
+
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, flexGrow: 1 },
