@@ -36,8 +36,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "test": "jest && node --test \"supabase/tests/*.test.mjs\"",
-    "test:app": "jest",
+    "test": "npm run test:app && npm run test:db",
+    "test:app": "jest __tests__",
     "test:db": "node --test \"supabase/tests/*.test.mjs\"",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write app src __tests__ supabase/tests"
