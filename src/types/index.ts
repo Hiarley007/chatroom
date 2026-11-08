@@ -3,7 +3,7 @@ export interface Profile {
   username: string;
   avatarColor: string;
 }
- 
+
 export interface Room {
   id: string;
   name: string;
@@ -13,7 +13,7 @@ export interface Room {
   createdAt: string;
   memberCount?: number;
 }
- 
+
 export interface Message {
   id: string;
   roomId: string;
@@ -23,7 +23,7 @@ export interface Message {
   username: string;
   avatarColor: string;
 }
- 
+
 // Mensagem ainda não confirmada pelo servidor (mostrada otimisticamente).
 export interface PendingMessage extends Message {
   pending: true;

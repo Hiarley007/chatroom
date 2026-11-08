@@ -1,12 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { initials } from '@/utils/avatar';
- 
+
 interface AvatarProps {
   username: string;
   color: string;
   size?: number;
 }
- 
+
 export function Avatar({ username, color, size = 36 }: AvatarProps) {
   return (
     <View
@@ -19,7 +19,7 @@ export function Avatar({ username, color, size = 36 }: AvatarProps) {
     </View>
   );
 }
- 
+
 const styles = StyleSheet.create({
   circle: { alignItems: 'center', justifyContent: 'center' },
   text: { color: '#FFFFFF', fontWeight: '800' },

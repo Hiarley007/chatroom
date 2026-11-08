@@ -1,12 +1,12 @@
 import { z } from 'zod';
- 
+
 const email = z.string().trim().min(1, 'Informe o e-mail').email('E-mail inválido');
- 
+
 export const loginSchema = z.object({
   email,
   password: z.string().min(1, 'Informe a senha'),
 });
- 
+
 export const registerSchema = z
   .object({
     name: z.string().trim().min(2, 'Informe seu nome'),
@@ -18,6 +18,6 @@ export const registerSchema = z
     message: 'As senhas não conferem',
     path: ['confirm'],
   });
- 
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;

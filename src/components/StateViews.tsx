@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '@/theme';
 import type { IconName } from '@/utils/icons';
 import { Button } from './Button';
- 
+
 export function LoadingView() {
   return (
     <View style={styles.center}>
@@ -11,15 +11,15 @@ export function LoadingView() {
     </View>
   );
 }
- 
+
 interface ErrorStateProps {
   message: string;
   onRetry: () => void;
 }
- 
+
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-<View style={styles.center}>
+    <View style={styles.center}>
       <Ionicons name="cloud-offline" size={48} color={colors.muted} />
       <Text style={styles.title}>Algo deu errado</Text>
       <Text style={styles.text}>{message}</Text>
@@ -27,13 +27,13 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
     </View>
   );
 }
- 
+
 interface EmptyStateProps {
   icon?: IconName;
   title: string;
   message: string;
 }
- 
+
 export function EmptyState({
   icon = 'file-tray-outline',
   title,
@@ -47,7 +47,7 @@ export function EmptyState({
     </View>
   );
 }
- 
+
 const styles = StyleSheet.create({
   center: {
     flex: 1,

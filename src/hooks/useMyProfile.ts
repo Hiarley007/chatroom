@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { getProfile, updateUsername } from '@/services/profile';
- 
+
 export function useMyProfile() {
   const { user } = useAuth();
   return useQuery({
@@ -10,7 +10,7 @@ export function useMyProfile() {
     enabled: Boolean(user),
   });
 }
- 
+
 export function useUpdateUsername() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

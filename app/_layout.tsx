@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/context/AuthContext';
 import { queryClient } from '@/lib/queryClient';
- 
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>

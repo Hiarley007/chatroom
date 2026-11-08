@@ -11,7 +11,7 @@ import { registerSchema } from '@/schemas/auth';
 import type { RegisterFormData } from '@/schemas/auth';
 import { colors, spacing } from '@/theme';
 import { friendlyError } from '@/utils/errors';
- 
+
 export default function RegisterScreen() {
   const { signUp } = useAuth();
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function RegisterScreen() {
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', confirm: '' },
   });
- 
+
   const submit = handleSubmit(async (values) => {
     setFormError(null);
     try {
@@ -34,19 +34,19 @@ export default function RegisterScreen() {
           'Confirme seu e-mail',
           'Enviamos um link de confirmação. Verifique sua caixa de entrada e depois entre.',
         );
-router.replace('/login');
+        router.replace('/login');
       }
       // Sem confirmação exigida: a sessão já existe e o guarda de rota redireciona sozinho.
     } catch (error) {
       setFormError(friendlyError(error));
     }
   });
- 
+
   return (
     <Screen scroll>
       <Text style={styles.title}>Criar conta</Text>
       <Text style={styles.subtitle}>Leva menos de um minuto.</Text>
- 
+
       <FormInput
         control={control}
         name="name"
@@ -77,18 +77,18 @@ router.replace('/login');
         placeholder="Repita a senha"
         secureTextEntry
       />
- 
+
       {formError ? <Text style={styles.error}>{formError}</Text> : null}
- 
+
       <Button title="Criar conta" onPress={submit} loading={formState.isSubmitting} />
- 
+
       <Link href="/login" style={styles.link}>
         Já tem conta? <Text style={styles.linkStrong}>Entrar</Text>
       </Link>
     </Screen>
   );
 }
- 
+
 const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', color: colors.text, marginTop: spacing.lg },
   subtitle: { fontSize: 15, color: colors.muted, marginBottom: spacing.lg, marginTop: 4 },
