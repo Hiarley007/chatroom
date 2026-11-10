@@ -1,7 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -26,7 +25,6 @@ import { useDeleteMessage, useMessages, useSendMessage } from '@/hooks/useMessag
 import { useRoomPresence } from '@/hooks/usePresence';
 import {
   useJoinRoom,
-  useLeaveRoom,
   useMyRoomIds,
   useRoom,
   useRoomMembers,
@@ -39,12 +37,16 @@ import { colorForId } from '@/utils/avatar';
 import { buildChatItems } from '@/utils/chatItems';
 import type { ChatItem } from '@/utils/chatItems';
 import { friendlyError } from '@/utils/errors';
+import type { Message } from '@/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function RoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + 44 : 0;
   const styles = useStyles(createStyles);
   const toast = useToast();
   const room = useRoom(id);
@@ -54,7 +56,6 @@ export default function RoomScreen() {
   const sendMessage = useSendMessage(id);
   const deleteMessage = useDeleteMessage(id);
   const joinRoom = useJoinRoom();
-  const leaveRoom = useLeaveRoom();
   const online = useRoomPresence(isMember ? id : undefined);
   const { typingUsernames, notifyTyping } = useTypingIndicator(isMember ? id : undefined);
   const { data: members } = useRoomMembers(id);
@@ -73,6 +74,10 @@ export default function RoomScreen() {
       color: colorById.get(o.userId) ?? colorForId(o.userId),
     }));
   }, [online, members]);
+
+  const isAdmin =
+    room.data?.createdBy === user?.id ||
+    (members ?? []).some((member) => member.userId === user?.id && member.role === 'admin');
 
   useEffect(() => {
     if (messages.data?.length)
@@ -96,26 +101,24 @@ export default function RoomScreen() {
     sendMessage.mutate(body, { onError: (e) => toast.show(friendlyError(e), 'error') });
   }
 
-  function confirmDelete(messageId: string) {
-    Alert.alert('Apagar mensagem', 'Esta ação não pode ser desfeita.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Apagar',
-        style: 'destructive',
-        onPress: () => deleteMessage.mutate(messageId),
-      },
-    ]);
-  }
+  async function confirmDelete(message: Message) {
+    const isOthersMessage = message.userId !== user?.id;
+    const confirmed = await toast.confirm({
+      title: isOthersMessage ? 'Apagar mensagem de outra pessoa?' : 'Apagar sua mensagem?',
+      message: isOthersMessage
+        ? `A mensagem de ${message.username} será removida para todos. Esta ação não pode ser desfeita.`
+        : 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Apagar',
+      confirmTone: 'danger',
+    });
+    if (!confirmed) return;
 
-  function confirmLeave() {
-    Alert.alert('Sair da sala', `Deseja sair de "${room.data!.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: () => leaveRoom.mutate(id, { onSuccess: () => router.back() }),
-      },
-    ]);
+    try {
+      await deleteMessage.mutateAsync(message.id);
+      toast.show('Mensagem apagada.', 'success');
+    } catch {
+      toast.show('Não foi possível apagar a mensagem. Tente novamente.', 'error');
+    }
   }
 
   if (!isMember) {
@@ -149,8 +152,8 @@ export default function RoomScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardVerticalOffset}
     >
       <Stack.Screen
         options={{
@@ -158,10 +161,9 @@ export default function RoomScreen() {
           headerRight: () => (
             <View style={styles.headerActions}>
               <IconButton
-                icon="exit-outline"
-                label="Sair da sala"
-                variant="danger"
-                onPress={confirmLeave}
+                icon="settings-outline"
+                label="Configurações da sala"
+                onPress={() => router.push(`/room/${id}/settings`)}
               />
             </View>
           ),
@@ -195,10 +197,11 @@ export default function RoomScreen() {
                 <MessageBubble
                   message={item.message}
                   mine={item.message.userId === user?.id}
+                  canDelete={isAdmin}
                   showSender={item.showSender}
                   pending={item.message.id.startsWith('temp-')}
                   animate={item.message.animate}
-                  onLongPress={() => confirmDelete(item.message.id)}
+                  onLongPress={() => void confirmDelete(item.message)}
                 />
               )
             }
@@ -271,6 +274,7 @@ const createStyles = ({ colors, radius, spacing, typography }: Theme) =>
       flex: 1,
       minHeight: 44,
       maxHeight: 120,
+      minWidth: 0,
       paddingHorizontal: spacing.md,
       paddingTop: 12,
       paddingBottom: 12,

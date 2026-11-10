@@ -9,7 +9,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-system-ui"
+      "expo-system-ui",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permita que o ChatRoom use o microfone para gravar mensagens de áudio."
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

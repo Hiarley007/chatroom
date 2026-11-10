@@ -63,10 +63,6 @@ export async function createRoom(
     .single();
   if (error) throw error;
   const room = data as { id: string };
-  const { error: joinError } = await supabase
-    .from('room_members')
-    .insert({ room_id: room.id, user_id: userId });
-  if (joinError) throw joinError;
   return room.id;
 }
 
@@ -88,6 +84,7 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
 
 interface MemberRow {
   user_id: string;
+  role: 'admin' | 'member';
   profiles: { username: string; avatar_color: string } | null;
 }
 
@@ -95,17 +92,29 @@ export interface RoomMember {
   userId: string;
   username: string;
   avatarColor: string;
+  role: 'admin' | 'member';
 }
 
 export async function listRoomMembers(roomId: string): Promise<RoomMember[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('user_id, profiles(username, avatar_color)')
+    .select('user_id, role, profiles(username, avatar_color)')
     .eq('room_id', roomId);
   if (error) throw error;
   return (data as unknown as MemberRow[]).map((r) => ({
     userId: r.user_id,
     username: r.profiles?.username ?? 'Alguém',
     avatarColor: r.profiles?.avatar_color ?? '#2563EB',
+    role: r.role,
   }));
+}
+
+export async function deleteRoom(roomId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .delete()
+    .eq('id', roomId)
+    .select('id');
+  if (error) throw error;
+  if (!data?.length) throw new Error('A sala não existe ou você não tem permissão para apagá-la.');
 }

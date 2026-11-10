@@ -2,10 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Button } from '@/components/Button';
 import { FormInput } from '@/components/FormInput';
 import { Screen } from '@/components/Screen';
+import { useToast } from '@/components/Toast';
 import { useStyles } from '@/hooks/useStyles';
 import { useAuth } from '@/context/AuthContext';
 import { registerSchema } from '@/schemas/auth';
@@ -17,6 +18,7 @@ export default function RegisterScreen() {
   const styles = useStyles(createStyles);
   const { signUp } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [formError, setFormError] = useState<string | null>(null);
   const { control, handleSubmit, formState } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -32,9 +34,9 @@ export default function RegisterScreen() {
         values.password,
       );
       if (needsConfirmation) {
-        Alert.alert(
-          'Confirme seu e-mail',
-          'Enviamos um link de confirmação. Verifique sua caixa de entrada e depois entre.',
+        toast.show(
+          'Enviamos um link de confirmação. Verifique seu e-mail e depois entre.',
+          'info',
         );
         router.replace('/login');
       }

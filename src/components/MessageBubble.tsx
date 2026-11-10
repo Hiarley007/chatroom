@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   message: Message;
   mine: boolean;
   showSender: boolean;
+  canDelete?: boolean;
   pending?: boolean;
   animate?: boolean;
   onLongPress?: () => void;
@@ -20,6 +21,7 @@ export function MessageBubble({
   message,
   mine,
   showSender,
+  canDelete = false,
   pending,
   animate = false,
   onLongPress,
@@ -27,7 +29,7 @@ export function MessageBubble({
   const styles = useStyles(createStyles);
   const entrance = useEntrance(animate || !!pending);
   const time = pending ? 'enviando' : formatMessageTime(message.createdAt);
-  const canDelete = mine && !!onLongPress;
+  const canDeleteMessage = (mine || canDelete) && !!onLongPress;
 
   return (
     <Animated.View style={[styles.row, mine && styles.rowMine, entrance]}>
@@ -42,7 +44,7 @@ export function MessageBubble({
         accessible
         accessibilityLabel={`${mine ? 'Você' : message.username}: ${message.body}. ${time}`}
         accessibilityActions={
-          canDelete ? [{ name: 'delete', label: 'Apagar mensagem' }] : undefined
+          canDeleteMessage ? [{ name: 'delete', label: 'Apagar mensagem' }] : undefined
         }
         onAccessibilityAction={(e: AccessibilityActionEvent) => {
           if (e.nativeEvent.actionName === 'delete') onLongPress?.();
@@ -52,7 +54,7 @@ export function MessageBubble({
           <Text style={styles.sender}>{message.username}</Text>
         ) : null}
         <Pressable
-          onLongPress={canDelete ? onLongPress : undefined}
+          onLongPress={canDeleteMessage ? onLongPress : undefined}
           style={[
             styles.bubble,
             mine ? styles.bubbleMine : styles.bubbleTheirs,

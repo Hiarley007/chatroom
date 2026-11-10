@@ -52,8 +52,13 @@ export async function sendMessage(
 }
 
 export async function deleteMessage(id: string): Promise<void> {
-  const { error } = await supabase.from('messages').delete().eq('id', id);
+  const { data, error } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data?.length) throw new Error('A mensagem não existe ou você não tem permissão para apagá-la.');
 }
 
 // Busca uma mensagem específica pelo id (usada quando o Realtime avisa de um

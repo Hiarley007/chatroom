@@ -120,13 +120,23 @@ export function useSendMessage(roomId: string) {
 
 export function useDeleteMessage(roomId: string) {
   const queryClient = useQueryClient();
+  const queryKey = ['messages', roomId] as const;
   return useMutation({
     mutationFn: (id: string) => deleteMessage(id),
     onMutate: async (id) => {
       // Otimista aqui também: some da tela antes mesmo da resposta chegar.
-      queryClient.setQueryData<Message[]>(['messages', roomId], (old) =>
+      await queryClient.cancelQueries({ queryKey });
+      const previousMessages = queryClient.getQueryData<Message[]>(queryKey);
+      queryClient.setQueryData<Message[]>(queryKey, (old) =>
         old?.filter((m) => m.id !== id),
       );
+      return { previousMessages };
     },
+    onError: (_error, _id, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(queryKey, context.previousMessages);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 }

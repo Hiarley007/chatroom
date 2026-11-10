@@ -12,3 +12,40 @@ export function friendlyError(
   }
   return fallback;
 }
+
+export function socialErrorMessage(error: unknown, fallback: string): string {
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+
+  if (
+    typeof code === 'string' &&
+    ['42P01', '42703', '42883', 'PGRST202', 'PGRST204', 'PGRST205'].includes(code)
+  ) {
+    return 'Amizades e convites ainda não estão ativos no servidor. A migração do ChatRoom precisa ser aplicada no Supabase.';
+  }
+
+  return fallback;
+}
+
+export function directChatErrorMessage(error: unknown, fallback: string): string {
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  const detail = friendlyError(error, fallback);
+
+  if (
+    typeof code === 'string' &&
+    ['42P01', '42703', '42883', 'PGRST202', 'PGRST204', 'PGRST205'].includes(code)
+  ) {
+    return `${detail}\n\nAplique no Supabase, em ordem, as migrações de conversas e presença do ChatRoom.`;
+  }
+
+  if (typeof code === 'string' && code === '42501' && !detail.includes('só estão disponíveis')) {
+    return `${detail}\n\nConfirme se a amizade foi aceita e se as políticas RLS da migração de conversas estão aplicadas.`;
+  }
+
+  return detail;
+}

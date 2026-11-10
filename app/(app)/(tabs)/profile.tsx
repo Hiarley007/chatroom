@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -37,6 +37,7 @@ export default function ProfileScreen() {
   const styles = useStyles(createStyles);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
 
   function startEditing() {
     setName(profile?.username ?? '');
@@ -65,15 +66,23 @@ export default function ProfileScreen() {
     });
   }
 
-  function confirmSignOut() {
-    Alert.alert('Sair', 'Deseja encerrar a sessão?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: () => signOut().catch((e) => toast.show(friendlyError(e), 'error')),
-      },
-    ]);
+  async function confirmSignOut() {
+    const confirmed = await toast.confirm({
+      title: 'Sair da conta?',
+      message: 'Você precisará entrar novamente para usar o ChatRoom neste aparelho.',
+      confirmLabel: 'Sair da conta',
+      confirmTone: 'danger',
+    });
+    if (!confirmed) return;
+
+    setSigningOut(true);
+    try {
+      await signOut();
+      toast.show('Você saiu da conta.', 'success');
+    } catch (error) {
+      setSigningOut(false);
+      toast.show(friendlyError(error), 'error');
+    }
   }
 
   return (
@@ -159,6 +168,7 @@ export default function ProfileScreen() {
         title="Sair da conta"
         variant="danger"
         onPress={confirmSignOut}
+        loading={signingOut}
         style={styles.signOut}
       />
     </Screen>

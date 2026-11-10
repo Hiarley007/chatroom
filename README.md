@@ -15,6 +15,7 @@ puxar a tela para atualizar.
 - Envio **otimista**: a mensagem aparece na hora, e é confirmada depois
 - **Presença**: contador de quem está online na sala agora
 - **"Fulano está digitando..."**: aviso efêmero, que não grava nada no banco
+- Pedidos de amizade e convites para salas com notificação no e-mail cadastrado
 - Apagar a própria mensagem; editar o nome exibido no Perfil
  
 ## Tecnologias
@@ -25,14 +26,19 @@ React Hook Form · Zod · Jest · PGlite (testes do banco)
 ## Como executar
  
 1. Instale as dependências: `npm install`
-2. Crie um projeto no [Supabase](https://supabase.com) e execute
-   `supabase/schema.sql` no SQL Editor.
-3. Em **Database → Replication**, confirme que a tabela `messages` está
+2. Crie um projeto no [Supabase](https://supabase.com), execute
+   `supabase/schema.sql` no SQL Editor e aplique os arquivos em
+   `supabase/migrations` em ordem cronológica.
+3. Configure os secrets SMTP da Edge Function no Supabase:
+   `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM`.
+   Depois publique a função com `supabase functions deploy notify-friend-request`.
+   O remetente em `SMTP_FROM` precisa estar autorizado pelo seu provedor SMTP.
+4. Em **Database → Replication**, confirme que a tabela `messages` está
    marcada para o Realtime (o próprio `schema.sql` já faz isso, mas vale
    conferir no painel).
-4. Copie `.env.example` para `.env` e preencha a URL e a chave pública do
+5. Copie `.env.example` para `.env` e preencha a URL e a chave pública do
    projeto.
-5. Inicie o app: `npx expo start` e abra no Expo Go.
+6. Inicie o app: `npx expo start` e abra no Expo Go.
  
 ## Testes
  

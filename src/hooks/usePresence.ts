@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
+import { createContext, createElement, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMyProfile } from './useMyProfile';
@@ -6,6 +8,105 @@ import { useMyProfile } from './useMyProfile';
 export interface OnlineUser {
   userId: string;
   username: string;
+}
+
+const GLOBAL_PRESENCE_TOPIC = 'chatroom-global-presence';
+
+interface GlobalPresenceSnapshot {
+  userIds: Set<string>;
+  ready: boolean;
+}
+
+const GlobalPresenceContext = createContext<GlobalPresenceSnapshot | null>(null);
+
+/** Mantém um único canal de presença ativo durante toda a sessão autenticada. */
+export function GlobalPresenceProvider({
+  userId,
+  children,
+}: {
+  userId: string | undefined;
+  children: ReactNode;
+}) {
+  const [snapshot, setSnapshot] = useState<GlobalPresenceSnapshot>({
+    userIds: new Set(),
+    ready: false,
+  });
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    const channel = supabase.channel(GLOBAL_PRESENCE_TOPIC, {
+      config: { presence: { key: userId } },
+    });
+    let subscribed = false;
+
+    const refreshOnlineUsers = () => {
+      setSnapshot({
+        userIds: new Set(Object.keys(channel.presenceState())),
+        ready: true,
+      });
+    };
+
+    const touchLastSeen = () => {
+      void (async () => {
+        try {
+          await supabase.rpc('touch_user_presence');
+        } catch {
+          // A falha de last seen não deve interromper a presença em tempo real.
+        }
+      })();
+    };
+
+    channel
+      .on('presence', { event: 'sync' }, refreshOnlineUsers)
+      .on('presence', { event: 'join' }, refreshOnlineUsers)
+      .on('presence', { event: 'leave' }, refreshOnlineUsers)
+      .subscribe((status) => {
+        subscribed = status === 'SUBSCRIBED';
+        if (!subscribed) {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setSnapshot((current) => ({ ...current, ready: true }));
+          }
+          return;
+        }
+
+        touchLastSeen();
+        if (AppState.currentState !== 'background' && AppState.currentState !== 'inactive') {
+          void channel.track({ userId, onlineAt: new Date().toISOString() });
+        }
+      });
+
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        touchLastSeen();
+        if (subscribed) {
+          void channel.track({ userId, onlineAt: new Date().toISOString() });
+        }
+      } else {
+        touchLastSeen();
+        if (subscribed) void channel.untrack();
+      }
+    });
+
+    const heartbeat = setInterval(() => {
+      if (AppState.currentState === 'active') touchLastSeen();
+    }, 60_000);
+
+    return () => {
+      clearInterval(heartbeat);
+      appStateSubscription.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  return createElement(GlobalPresenceContext.Provider, { value: snapshot }, children);
+}
+
+/** Lê a presença do amigo do canal global compartilhado pela sessão. */
+export function useDirectContactPresence(friendId: string | undefined): boolean | null {
+  const presence = useContext(GlobalPresenceContext);
+  if (!friendId || !presence?.ready) return null;
+  return presence.userIds.has(friendId);
 }
 
 // "Quem está online agora, nesta sala" — sem nenhuma tabela no banco. O

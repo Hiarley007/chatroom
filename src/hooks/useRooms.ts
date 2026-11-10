@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
+import type { Room } from '@/types';
 import {
   createRoom,
+  deleteRoom,
   getRoom,
   joinRoom,
   leaveRoom,
@@ -73,5 +75,27 @@ export function useLeaveRoom() {
       return leaveRoom(roomId, user.id);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
+  });
+}
+
+export function useDeleteRoom() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteRoom,
+    onSuccess: async (_result, roomId) => {
+      queryClient.setQueryData<Room[]>(['rooms', 'list'], (rooms) =>
+        rooms?.filter((room) => room.id !== roomId),
+      );
+      queryClient.setQueryData<Set<string>>(['rooms', 'mine'], (roomIds) => {
+        if (!roomIds) return roomIds;
+        const next = new Set(roomIds);
+        next.delete(roomId);
+        return next;
+      });
+      queryClient.removeQueries({ queryKey: ['rooms', 'detail', roomId] });
+      queryClient.removeQueries({ queryKey: ['rooms', 'members', roomId] });
+      queryClient.removeQueries({ queryKey: ['messages', roomId] });
+      await queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    },
   });
 }
