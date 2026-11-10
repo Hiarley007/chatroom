@@ -158,16 +158,6 @@ export default function RoomScreen() {
           headerRight: () => (
             <View style={styles.headerActions}>
               <IconButton
-                icon="person-add-outline"
-                label="Convidar pessoas"
-                onPress={() =>
-                  router.push({
-                    pathname: '/room/invite',
-                    params: { roomId: id, roomName: room.data!.name },
-                  })
-                }
-              />
-              <IconButton
                 icon="exit-outline"
                 label="Sair da sala"
                 variant="danger"
