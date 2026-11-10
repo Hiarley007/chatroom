@@ -1,104 +1,145 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { EmptyState, ErrorState, LoadingView } from '@/components/StateViews';
 import { RoomCard } from '@/components/RoomCard';
+import { Screen } from '@/components/Screen';
+import { SearchBar } from '@/components/SearchBar';
+import { RoomListSkeleton } from '@/components/Skeleton';
+import { EmptyState, ErrorState } from '@/components/StateViews';
+import { useTheme } from '@/context/ThemeContext';
 import { useMyRoomIds, useRooms } from '@/hooks/useRooms';
-import { colors, radius, spacing } from '@/theme';
+import { useStyles } from '@/hooks/useStyles';
+import type { Theme } from '@/theme';
 import { friendlyError } from '@/utils/errors';
+import { filterRooms, splitRooms } from '@/utils/rooms';
 
 export default function RoomsScreen() {
   const router = useRouter();
-  const { data: rooms, isLoading, isError, error, refetch, isRefetching } = useRooms();
-  const { data: myRoomIds } = useMyRoomIds();
-  const memberIds = useMemo(() => myRoomIds ?? new Set<string>(), [myRoomIds]);
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
+  const rooms = useRooms();
+  const mine = useMyRoomIds();
+  const [query, setQuery] = useState('');
 
-  if (isLoading) return <LoadingView />;
-  if (isError) return <ErrorState message={friendlyError(error)} onRetry={refetch} />;
+  const sections = useMemo(
+    () =>
+      splitRooms(filterRooms(rooms.data ?? [], query), mine.data ?? new Set<string>()),
+    [rooms.data, mine.data, query],
+  );
 
-  return (
-    <View style={styles.screen}>
-      <FlatList
-        data={rooms ?? []}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.title}>Salas</Text>
-            <Text style={styles.subtitle}>
-              Entre em uma sala e converse em tempo real.
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="chatbubbles-outline"
-            title="Nenhuma sala ainda"
-            message="Crie a primeira sala para começar a conversar."
-          />
-        }
+  const refresh = () => {
+    void rooms.refetch();
+    void mine.refetch();
+  };
+
+  let body;
+  if (rooms.isLoading) {
+    body = <RoomListSkeleton />;
+  } else if (rooms.isError) {
+    body = <ErrorState message={friendlyError(rooms.error)} onRetry={refresh} />;
+  } else {
+    body = (
+      <SectionList
+        sections={sections}
+        keyExtractor={(room) => room.id}
+        keyboardShouldPersistTaps="handled"
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderSectionHeader={({ section }) => (
+          <Text accessibilityRole="header" style={styles.sectionTitle}>
+            {section.title} · {section.data.length}
+          </Text>
+        )}
         renderItem={({ item }) => (
           <RoomCard
             room={item}
-            isMember={memberIds.has(item.id)}
+            isMember={mine.data?.has(item.id) ?? false}
             onPress={() => router.push(`/room/${item.id}`)}
           />
         )}
+        ListEmptyComponent={
+          query ? (
+            <EmptyState
+              icon="search-outline"
+              title="Nenhum resultado"
+              message={`Nenhuma sala encontrada para "${query}".`}
+            />
+          ) : (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="Nenhuma sala ainda"
+              message="Toque no + para criar a primeira sala."
+            />
+          )
+        }
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => {
-              void refetch();
-            }}
-            tintColor={colors.primary}
+            refreshing={rooms.isRefetching}
+            onRefresh={refresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
           />
         }
       />
+    );
+  }
+
+  return (
+    <Screen>
+      <View style={styles.header}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Salas
+        </Text>
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar salas" />
+      </View>
+      <View style={styles.flex}>{body}</View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Nova sala"
+        accessibilityLabel="Criar sala"
         onPress={() => router.push('/room/new')}
-        style={styles.fab}
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
       >
-        <Ionicons name="add" size={28} color={colors.onPrimary} />
+        <Ionicons name="add" size={30} color={colors.onPrimary} />
       </Pressable>
-    </View>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: {
-    padding: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: 100,
-    flexGrow: 1,
-  },
-  header: { marginBottom: spacing.md },
-  title: { fontSize: 28, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.muted, marginTop: 4 },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-});
+const createStyles = ({ colors, spacing, typography, shadows }: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    header: { paddingHorizontal: spacing.md, paddingTop: spacing.md, gap: spacing.md },
+    title: { ...typography.title, color: colors.text },
+    listContent: { padding: spacing.md, paddingBottom: 96, flexGrow: 1 },
+    separator: { height: spacing.sm },
+    sectionTitle: {
+      ...typography.label,
+      color: colors.muted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    fab: {
+      position: 'absolute',
+      right: spacing.lg,
+      bottom: spacing.lg,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      ...shadows.raised,
+    },
+    fabPressed: { opacity: 0.85 },
+  });

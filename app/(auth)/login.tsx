@@ -7,13 +7,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { FormInput } from '@/components/FormInput';
 import { Screen } from '@/components/Screen';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/useStyles';
 import { useAuth } from '@/context/AuthContext';
 import { loginSchema } from '@/schemas/auth';
 import type { LoginFormData } from '@/schemas/auth';
-import { colors, spacing } from '@/theme';
+import type { Theme } from '@/theme';
 import { friendlyError } from '@/utils/errors';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const { signIn } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
   const { control, handleSubmit, formState } = useForm<LoginFormData>({
@@ -34,7 +38,7 @@ export default function LoginScreen() {
   return (
     <Screen scroll>
       <View style={styles.header}>
-        <Ionicons name="chatbubbles" size={56} color={colors.primary} />
+        <Ionicons name="chatbubbles" size={56} color={colors.accent} />
         <Text style={styles.title}>ChatRoom</Text>
         <Text style={styles.subtitle}>Converse em tempo real, em salas</Text>
       </View>
@@ -57,7 +61,15 @@ export default function LoginScreen() {
         autoComplete="password"
       />
 
-      {formError ? <Text style={styles.error}>{formError}</Text> : null}
+      {formError ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={styles.error}
+        >
+          {formError}
+        </Text>
+      ) : null}
 
       <Button title="Entrar" onPress={submit} loading={formState.isSubmitting} />
 
@@ -67,11 +79,23 @@ export default function LoginScreen() {
     </Screen>
   );
 }
-const styles = StyleSheet.create({
-  header: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xl },
-  title: { fontSize: 32, fontWeight: '800', color: colors.text, marginTop: spacing.sm },
-  subtitle: { fontSize: 15, color: colors.muted, marginTop: 4 },
-  error: { color: colors.danger, marginBottom: spacing.md, textAlign: 'center' },
-  link: { marginTop: spacing.lg, textAlign: 'center', color: colors.muted, fontSize: 15 },
-  linkStrong: { color: colors.primary, fontWeight: '700' },
-});
+
+const createStyles = ({ colors, spacing, typography }: Theme) =>
+  StyleSheet.create({
+    header: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xl },
+    title: { ...typography.display, color: colors.text, marginTop: spacing.sm },
+    subtitle: { ...typography.body, color: colors.muted, marginTop: 4 },
+    error: {
+      ...typography.body,
+      color: colors.dangerText,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    link: {
+      ...typography.body,
+      marginTop: spacing.lg,
+      textAlign: 'center',
+      color: colors.muted,
+    },
+    linkStrong: { ...typography.bodyStrong, color: colors.accent },
+  });

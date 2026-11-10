@@ -1,4 +1,4 @@
-const PALETTE = [
+export const PALETTE = [
   '#2563EB',
   '#7C3AED',
   '#DB2777',

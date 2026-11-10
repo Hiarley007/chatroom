@@ -6,13 +6,15 @@ import { Alert, StyleSheet, Text } from 'react-native';
 import { Button } from '@/components/Button';
 import { FormInput } from '@/components/FormInput';
 import { Screen } from '@/components/Screen';
+import { useStyles } from '@/hooks/useStyles';
 import { useAuth } from '@/context/AuthContext';
 import { registerSchema } from '@/schemas/auth';
 import type { RegisterFormData } from '@/schemas/auth';
-import { colors, spacing } from '@/theme';
+import type { Theme } from '@/theme';
 import { friendlyError } from '@/utils/errors';
 
 export default function RegisterScreen() {
+  const styles = useStyles(createStyles);
   const { signUp } = useAuth();
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -78,7 +80,15 @@ export default function RegisterScreen() {
         secureTextEntry
       />
 
-      {formError ? <Text style={styles.error}>{formError}</Text> : null}
+      {formError ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={styles.error}
+        >
+          {formError}
+        </Text>
+      ) : null}
 
       <Button title="Criar conta" onPress={submit} loading={formState.isSubmitting} />
 
@@ -89,10 +99,26 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '800', color: colors.text, marginTop: spacing.lg },
-  subtitle: { fontSize: 15, color: colors.muted, marginBottom: spacing.lg, marginTop: 4 },
-  error: { color: colors.danger, marginBottom: spacing.md, textAlign: 'center' },
-  link: { marginTop: spacing.lg, textAlign: 'center', color: colors.muted, fontSize: 15 },
-  linkStrong: { color: colors.primary, fontWeight: '700' },
-});
+const createStyles = ({ colors, spacing, typography }: Theme) =>
+  StyleSheet.create({
+    title: { ...typography.title, color: colors.text, marginTop: spacing.lg },
+    subtitle: {
+      ...typography.body,
+      color: colors.muted,
+      marginBottom: spacing.lg,
+      marginTop: 4,
+    },
+    error: {
+      ...typography.body,
+      color: colors.dangerText,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    link: {
+      ...typography.body,
+      marginTop: spacing.lg,
+      textAlign: 'center',
+      color: colors.muted,
+    },
+    linkStrong: { ...typography.bodyStrong, color: colors.accent },
+  });

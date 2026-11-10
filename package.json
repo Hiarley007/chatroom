@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@hookform/resolvers": "^7.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -10,9 +11,11 @@
     "@tanstack/react-query": "^5.107.1",
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
+    "expo-font": "~58.0.11",
     "expo-linking": "~58.0.16",
     "expo-router": "~58.0.30",
     "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.91.0",
@@ -27,6 +30,8 @@
     "@electric-sql/pglite": "^0.5.15",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~58.0.4",
     "jest": "^30.5.2",
     "jest-expo": "^58.0.14",
     "prettier": "^3.9.10",
@@ -40,13 +45,18 @@
     "test:app": "jest __tests__",
     "test:db": "node --test \"supabase/tests/*.test.mjs\"",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write app src __tests__ supabase/tests"
+    "format": "prettier --write app src __tests__ supabase/tests",
+    "lint": "expo lint"
   },
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
-    }
+    },
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/supabase/"
+    ]
   },
   "private": true
 }

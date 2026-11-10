@@ -40,7 +40,7 @@ export function useMessages(roomId: string | undefined) {
           // O evento cru não traz o nome/cor do autor (não passa pelo join do
           // serviço); buscamos a versão completa antes de mostrar.
           try {
-            const full = await getMessage(id);
+            const full = { ...(await getMessage(id)), animate: true };
             queryClient.setQueryData<Message[]>(['messages', roomId], (old) => {
               if (!old) return [full];
               if (old.some((m) => m.id === full.id)) return old; // já está lá (próprio envio)

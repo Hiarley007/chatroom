@@ -27,3 +27,14 @@ export async function updateUsername(userId: string, username: string): Promise<
   const { error } = await supabase.from('profiles').update({ username }).eq('id', userId);
   if (error) throw error;
 }
+
+export async function updateAvatarColor(
+  userId: string,
+  avatarColor: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_color: avatarColor })
+    .eq('id', userId);
+  if (error) throw error;
+}

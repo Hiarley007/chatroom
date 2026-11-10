@@ -1,6 +1,9 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/useStyles';
+import { minTouchSize } from '@/theme';
+import type { Theme } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -10,6 +13,7 @@ interface ButtonProps {
   variant?: Variant;
   loading?: boolean;
   disabled?: boolean;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -19,13 +23,25 @@ export function Button({
   variant = 'primary',
   loading = false,
   disabled = false,
+  accessibilityHint,
   style,
 }: ButtonProps) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
   const inactive = disabled || loading;
+  const spinnerColor =
+    variant === 'secondary'
+      ? colors.onPrimarySoft
+      : variant === 'ghost'
+        ? colors.accent
+        : colors.onPrimary;
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: inactive }}
+      accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: inactive, busy: loading }}
       onPress={onPress}
       disabled={inactive}
       style={({ pressed }) => [
@@ -37,41 +53,32 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator
-          color={
-            variant === 'secondary' || variant === 'ghost'
-              ? colors.primary
-              : colors.onPrimary
-          }
-        />
+        <ActivityIndicator color={spinnerColor} />
       ) : (
-        <Text
-          style={[
-            styles.label,
-            (variant === 'secondary' || variant === 'ghost') && styles.labelAlt,
-          ]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.label, styles[`${variant}Label` as const]]}>{title}</Text>
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.primarySoft },
-  danger: { backgroundColor: colors.danger },
-  ghost: { backgroundColor: 'transparent' },
-  label: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
-  labelAlt: { color: colors.primary },
-  pressed: { opacity: 0.85 },
-  inactive: { opacity: 0.45 },
-});
+const createStyles = ({ colors, radius, spacing, typography }: Theme) =>
+  StyleSheet.create({
+    base: {
+      minHeight: Math.max(52, minTouchSize),
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primary: { backgroundColor: colors.primary },
+    secondary: { backgroundColor: colors.primarySoft },
+    danger: { backgroundColor: colors.danger },
+    ghost: { backgroundColor: 'transparent' },
+    label: { ...typography.subheading },
+    primaryLabel: { color: colors.onPrimary },
+    secondaryLabel: { color: colors.onPrimarySoft },
+    dangerLabel: { color: colors.onPrimary },
+    ghostLabel: { color: colors.accent },
+    pressed: { opacity: 0.85 },
+    inactive: { opacity: 0.45 },
+  });

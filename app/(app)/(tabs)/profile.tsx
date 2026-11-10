@@ -1,21 +1,40 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Input } from '@/components/Input';
 import { Screen } from '@/components/Screen';
+import { SegmentedControl } from '@/components/SegmentedControl';
+import { useToast } from '@/components/Toast';
 import { useAuth } from '@/context/AuthContext';
-import { useMyProfile, useUpdateUsername } from '@/hooks/useMyProfile';
-import { colors, spacing } from '@/theme';
+import { useThemeMode } from '@/context/ThemeContext';
+import type { ThemeMode } from '@/context/ThemeContext';
+import {
+  useMyProfile,
+  useUpdateAvatarColor,
+  useUpdateUsername,
+} from '@/hooks/useMyProfile';
+import { useStyles } from '@/hooks/useStyles';
+import type { Theme } from '@/theme';
+import { PALETTE } from '@/utils/avatar';
 import { friendlyError } from '@/utils/errors';
 
+const MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: 'system', label: 'Sistema' },
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+];
+
 export default function ProfileScreen() {
-  const router = useRouter();
   const { user, signOut } = useAuth();
   const { data: profile } = useMyProfile();
   const updateUsername = useUpdateUsername();
+  const updateAvatarColor = useUpdateAvatarColor();
+  const { mode, setMode } = useThemeMode();
+  const toast = useToast();
+  const styles = useStyles(createStyles);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
 
@@ -26,62 +45,47 @@ export default function ProfileScreen() {
 
   function save() {
     const trimmed = name.trim();
-
     if (trimmed.length < 2) {
-      Alert.alert('Nome muito curto', 'Use pelo menos 2 caracteres.');
+      toast.show('Use pelo menos 2 caracteres no nome.', 'error');
       return;
     }
-
     updateUsername.mutate(trimmed, {
-      onSuccess: () => setEditing(false),
-      onError: (e) => Alert.alert('Não foi possível salvar', friendlyError(e)),
+      onSuccess: () => {
+        setEditing(false);
+        toast.show('Nome atualizado.', 'success');
+      },
+      onError: (e) => toast.show(friendlyError(e), 'error'),
     });
   }
 
-  async function exitAccount() {
-    try {
-      await signOut();
-      router.replace('/login');
-    } catch (e) {
-      const message = friendlyError(e);
-
-      if (Platform.OS === 'web') {
-        window.alert(`Erro ao sair: ${message}`);
-      } else {
-        Alert.alert('Erro ao sair', message);
-      }
-    }
+  function chooseColor(color: string) {
+    if (color === profile?.avatarColor) return;
+    updateAvatarColor.mutate(color, {
+      onError: (e) => toast.show(friendlyError(e), 'error'),
+    });
   }
 
   function confirmSignOut() {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Deseja encerrar a sessão?')) {
-        void exitAccount();
-      }
-      return;
-    }
-
     Alert.alert('Sair', 'Deseja encerrar a sessão?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Sair',
         style: 'destructive',
-        onPress: () => {
-          void exitAccount();
-        },
+        onPress: () => signOut().catch((e) => toast.show(friendlyError(e), 'error')),
       },
     ]);
   }
 
   return (
     <Screen scroll>
-      <Text style={styles.title}>Perfil</Text>
+      <Text accessibilityRole="header" style={styles.title}>
+        Perfil
+      </Text>
 
       <Card style={styles.card}>
         {profile ? (
           <Avatar username={profile.username} color={profile.avatarColor} size={72} />
         ) : null}
-
         {editing ? (
           <View style={styles.editRow}>
             <Input
@@ -90,7 +94,6 @@ export default function ProfileScreen() {
               onChangeText={setName}
               autoFocus
             />
-
             <View style={styles.editButtons}>
               <Button
                 title="Cancelar"
@@ -98,7 +101,6 @@ export default function ProfileScreen() {
                 onPress={() => setEditing(false)}
                 style={styles.editButton}
               />
-
               <Button
                 title="Salvar"
                 onPress={save}
@@ -116,6 +118,43 @@ export default function ProfileScreen() {
         )}
       </Card>
 
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Cor do avatar</Text>
+        <View style={styles.swatches}>
+          {PALETTE.map((color) => {
+            const selected = color === profile?.avatarColor;
+            return (
+              <Pressable
+                key={color}
+                accessibilityRole="radio"
+                accessibilityLabel={`Cor ${color}`}
+                accessibilityState={{ checked: selected }}
+                onPress={() => chooseColor(color)}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: color },
+                  selected && styles.swatchSelected,
+                ]}
+              >
+                {selected ? (
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Aparência</Text>
+        <SegmentedControl
+          options={MODE_OPTIONS}
+          value={mode}
+          onChange={setMode}
+          accessibilityLabel="Aparência do aplicativo"
+        />
+      </Card>
+
       <Button
         title="Sair da conta"
         variant="danger"
@@ -126,37 +165,32 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  card: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  email: {
-    fontSize: 14,
-    color: colors.muted,
-  },
-  editRow: {
-    alignSelf: 'stretch',
-  },
-  editButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  editButton: {
-    flex: 1,
-  },
-  signOut: {
-    marginTop: spacing.lg,
-  },
-});
+const createStyles = ({ colors, spacing, typography }: Theme) =>
+  StyleSheet.create({
+    title: { ...typography.title, color: colors.text, marginBottom: spacing.md },
+    card: { alignItems: 'center', gap: spacing.sm },
+    name: { ...typography.heading, color: colors.text },
+    email: { ...typography.body, color: colors.muted },
+    editRow: { alignSelf: 'stretch' },
+    editButtons: { flexDirection: 'row', gap: spacing.sm },
+    editButton: { flex: 1 },
+    section: { marginTop: spacing.md, gap: spacing.sm },
+    sectionTitle: {
+      ...typography.label,
+      color: colors.muted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    swatch: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: 'transparent',
+    },
+    swatchSelected: { borderColor: colors.text },
+    signOut: { marginTop: spacing.lg },
+  });

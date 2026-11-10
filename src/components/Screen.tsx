@@ -1,8 +1,16 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Edge } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/theme';
+import { useStyles } from '@/hooks/useStyles';
+import { maxContentWidth } from '@/theme';
+import type { Theme } from '@/theme';
 
 interface ScreenProps {
   children: ReactNode;
@@ -10,11 +18,13 @@ interface ScreenProps {
   edges?: Edge[];
 }
 
+// Em telas grandes (tablet e web) o conteúdo fica centralizado, com largura máxima.
 export function Screen({
   children,
   scroll = false,
   edges = ['top', 'left', 'right'],
 }: ScreenProps) {
+  const styles = useStyles(createStyles);
   return (
     <SafeAreaView style={styles.flex} edges={edges}>
       {scroll ? (
@@ -23,20 +33,28 @@ export function Screen({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
         </KeyboardAvoidingView>
       ) : (
-        children
+        <View style={styles.inner}>{children}</View>
       )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, flexGrow: 1 },
-});
+const createStyles = ({ colors, spacing }: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: colors.background },
+    inner: { flex: 1, width: '100%', maxWidth: maxContentWidth, alignSelf: 'center' },
+    scrollContent: {
+      padding: spacing.md,
+      flexGrow: 1,
+      width: '100%',
+      maxWidth: maxContentWidth,
+      alignSelf: 'center',
+    },
+  });

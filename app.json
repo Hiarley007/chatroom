@@ -6,8 +6,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-system-ui"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.seuusuario.chatroom"

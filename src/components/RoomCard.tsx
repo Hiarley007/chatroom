@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { useStyles } from '@/hooks/useStyles';
+import type { Theme } from '@/theme';
 import type { Room } from '@/types';
+import { Badge } from './Badge';
 
 interface RoomCardProps {
   room: Room;
@@ -10,9 +13,13 @@ interface RoomCardProps {
 }
 
 export function RoomCard({ room, isMember, onPress }: RoomCardProps) {
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
+  const count = room.memberCount ?? 0;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${room.name}, ${count} ${count === 1 ? 'participante' : 'participantes'}${isMember ? ', você participa' : ''}`}
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -30,8 +37,8 @@ export function RoomCard({ room, isMember, onPress }: RoomCardProps) {
         ) : null}
         <View style={styles.metaRow}>
           <Ionicons name="people" size={13} color={colors.muted} />
-          <Text style={styles.meta}>{room.memberCount ?? 0}</Text>
-          {isMember ? <Text style={styles.memberBadge}>Você participa</Text> : null}
+          <Text style={styles.meta}>{count}</Text>
+          {isMember ? <Badge label="Você participa" /> : null}
         </View>
       </View>
       <Ionicons name="chevron-forward" size={20} color={colors.muted} />
@@ -39,37 +46,32 @@ export function RoomCard({ room, isMember, onPress }: RoomCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pressed: { opacity: 0.85 },
-  emojiWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: { fontSize: 24 },
-  info: { flex: 1, gap: 2 },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text },
-  description: { fontSize: 13, color: colors.muted },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  meta: { fontSize: 12, color: colors.muted },
-  memberBadge: {
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: '700',
-    marginLeft: spacing.sm,
-  },
-});
+const createStyles = ({ colors, radius, spacing, typography, shadows }: Theme) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+      ...shadows.card,
+    },
+    pressed: { opacity: 0.85 },
+    emojiWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primarySoft,
+    },
+    emoji: { fontSize: 26 },
+    info: { flex: 1, gap: 2 },
+    name: { ...typography.subheading, color: colors.text },
+    description: { ...typography.caption, color: colors.muted },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    meta: { ...typography.caption, color: colors.muted },
+  });

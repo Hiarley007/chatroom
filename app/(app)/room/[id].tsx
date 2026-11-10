@@ -1,21 +1,27 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { AvatarStack } from '@/components/AvatarStack';
+import { Badge } from '@/components/Badge';
+import { Button } from '@/components/Button';
+import { DaySeparator } from '@/components/DaySeparator';
+import { IconButton } from '@/components/IconButton';
 import { MessageBubble } from '@/components/MessageBubble';
-import { ErrorState, LoadingView } from '@/components/StateViews';
+import { MessageListSkeleton } from '@/components/Skeleton';
+import { EmptyState, ErrorState, LoadingView } from '@/components/StateViews';
+import { useToast } from '@/components/Toast';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useDeleteMessage, useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useRoomPresence } from '@/hooks/usePresence';
 import {
@@ -25,15 +31,22 @@ import {
   useRoom,
   useRoomMembers,
 } from '@/hooks/useRooms';
+import { useStyles } from '@/hooks/useStyles';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
-import { colors, radius, spacing } from '@/theme';
+import { maxContentWidth } from '@/theme';
+import type { Theme } from '@/theme';
+import { colorForId } from '@/utils/avatar';
+import { buildChatItems } from '@/utils/chatItems';
+import type { ChatItem } from '@/utils/chatItems';
 import { friendlyError } from '@/utils/errors';
-import { shouldGroupWithPrevious } from '@/utils/messages';
 
 export default function RoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles(createStyles);
+  const toast = useToast();
   const room = useRoom(id);
   const { data: myRoomIds } = useMyRoomIds();
   const isMember = myRoomIds?.has(id) ?? false;
@@ -46,7 +59,20 @@ export default function RoomScreen() {
   const { typingUsernames, notifyTyping } = useTypingIndicator(isMember ? id : undefined);
   const { data: members } = useRoomMembers(id);
   const [text, setText] = useState('');
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlatList<ChatItem>>(null);
+
+  // Separadores de dia + agrupamento por autor (utils/chatItems.ts).
+  const items = useMemo(() => buildChatItems(messages.data ?? []), [messages.data]);
+
+  // Quem está online, com a cor de avatar de cada pessoa.
+  const onlineUsers = useMemo(() => {
+    const colorById = new Map((members ?? []).map((m) => [m.userId, m.avatarColor]));
+    return online.map((o) => ({
+      id: o.userId,
+      username: o.username,
+      color: colorById.get(o.userId) ?? colorForId(o.userId),
+    }));
+  }, [online, members]);
 
   useEffect(() => {
     if (messages.data?.length)
@@ -54,16 +80,20 @@ export default function RoomScreen() {
   }, [messages.data?.length]);
 
   if (room.isLoading) return <LoadingView />;
-  if (room.isError || !room.data)
-    return <ErrorState message={friendlyError(room.error)} onRetry={room.refetch} />;
+  if (room.isError || !room.data) {
+    return (
+      <ErrorState
+        message={friendlyError(room.error)}
+        onRetry={() => void room.refetch()}
+      />
+    );
+  }
 
   function handleSend() {
     const body = text.trim();
     if (!body) return;
     setText('');
-    sendMessage.mutate(body, {
-      onError: (e) => Alert.alert('Não foi possível enviar', friendlyError(e)),
-    });
+    sendMessage.mutate(body, { onError: (e) => toast.show(friendlyError(e), 'error') });
   }
 
   function confirmDelete(messageId: string) {
@@ -89,33 +119,32 @@ export default function RoomScreen() {
   }
 
   if (!isMember) {
+    const count = room.data.memberCount ?? 0;
     return (
       <View style={styles.joinScreen}>
         <Stack.Screen options={{ title: room.data.name }} />
         <Text style={styles.joinEmoji}>{room.data.emoji}</Text>
-        <Text style={styles.joinTitle}>{room.data.name}</Text>
+        <Text accessibilityRole="header" style={styles.joinTitle}>
+          {room.data.name}
+        </Text>
         {room.data.description ? (
           <Text style={styles.joinDescription}>{room.data.description}</Text>
         ) : null}
-        <Text style={styles.joinCount}>{room.data.memberCount ?? 0} participantes</Text>
-        <Pressable
-          accessibilityRole="button"
+        <Badge
+          tone="neutral"
+          label={`${count} ${count === 1 ? 'participante' : 'participantes'}`}
+        />
+        <Button
+          title="Entrar na sala"
+          loading={joinRoom.isPending}
           onPress={() =>
-            joinRoom.mutate(id, {
-              onError: (e) => Alert.alert('Não foi possível entrar', friendlyError(e)),
-            })
+            joinRoom.mutate(id, { onError: (e) => toast.show(friendlyError(e), 'error') })
           }
           style={styles.joinButton}
-        >
-          <Text style={styles.joinButtonText}>
-            {joinRoom.isPending ? 'Entrando...' : 'Entrar na sala'}
-          </Text>
-        </Pressable>
+        />
       </View>
     );
   }
-
-  const onlineCount = online.length;
 
   return (
     <KeyboardAvoidingView
@@ -127,127 +156,153 @@ export default function RoomScreen() {
         options={{
           title: room.data.name,
           headerRight: () => (
-            <Pressable accessibilityRole="button" onPress={confirmLeave}>
-              <Ionicons name="exit-outline" size={22} color={colors.danger} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <IconButton
+                icon="person-add-outline"
+                label="Convidar pessoas"
+                onPress={() =>
+                  router.push({
+                    pathname: '/room/invite',
+                    params: { roomId: id, roomName: room.data!.name },
+                  })
+                }
+              />
+              <IconButton
+                icon="exit-outline"
+                label="Sair da sala"
+                variant="danger"
+                onPress={confirmLeave}
+              />
+            </View>
           ),
         }}
       />
-      <View style={styles.onlineBar}>
-        <View style={styles.onlineDot} />
-        <Text style={styles.onlineText}>
-          {onlineCount} online{members?.length ? ` · ${members.length} na sala` : ''}
-        </Text>
-      </View>
-
-      {messages.isLoading ? (
-        <LoadingView />
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={messages.data ?? []}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item, index }) => (
-            <MessageBubble
-              message={item}
-              mine={item.userId === user?.id}
-              showSender={!shouldGroupWithPrevious(item, messages.data?.[index - 1])}
-              pending={item.id.startsWith('temp-')}
-              onLongPress={() => confirmDelete(item.id)}
-            />
+      <View style={styles.inner}>
+        <View style={styles.onlineBar}>
+          {onlineUsers.length > 0 ? (
+            <AvatarStack users={onlineUsers} />
+          ) : (
+            <View style={styles.onlineDot} />
           )}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        />
-      )}
+          <Text style={styles.onlineText}>
+            {online.length} online{members?.length ? ` · ${members.length} na sala` : ''}
+          </Text>
+        </View>
 
-      <TypingIndicator usernames={typingUsernames} />
+        {messages.isLoading ? (
+          <MessageListSkeleton />
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={items}
+            keyExtractor={(item) => item.key}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) =>
+              item.type === 'day' ? (
+                <DaySeparator label={item.label} />
+              ) : (
+                <MessageBubble
+                  message={item.message}
+                  mine={item.message.userId === user?.id}
+                  showSender={item.showSender}
+                  pending={item.message.id.startsWith('temp-')}
+                  animate={item.message.animate}
+                  onLongPress={() => confirmDelete(item.message.id)}
+                />
+              )
+            }
+            ListEmptyComponent={
+              <EmptyState
+                icon="chatbubble-ellipses-outline"
+                title="Nenhuma mensagem ainda"
+                message="Diga olá e comece a conversa!"
+              />
+            }
+            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+          />
+        )}
 
-      <View style={styles.composer}>
-        <TextInput
-          value={text}
-          onChangeText={(t) => {
-            setText(t);
-            if (t.length > 0) notifyTyping();
-          }}
-          placeholder="Escreva uma mensagem"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-          multiline
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-          onPress={handleSend}
-          disabled={!text.trim()}
-          style={[styles.sendButton, !text.trim() && styles.sendDisabled]}
-        >
-          <Ionicons name="send" size={18} color={colors.onPrimary} />
-        </Pressable>
+        <TypingIndicator usernames={typingUsernames} />
+
+        <View style={styles.composer}>
+          <TextInput
+            accessibilityLabel="Escrever mensagem"
+            value={text}
+            onChangeText={(t) => {
+              setText(t);
+              if (t.length > 0) notifyTyping();
+            }}
+            placeholder="Escreva uma mensagem"
+            placeholderTextColor={colors.muted}
+            selectionColor={colors.accent}
+            style={styles.input}
+            multiline
+          />
+          <IconButton
+            icon="send"
+            label="Enviar mensagem"
+            variant="filled"
+            onPress={handleSend}
+            disabled={!text.trim()}
+          />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  onlineBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.online },
-  onlineText: { fontSize: 12, color: colors.muted },
-  list: { padding: spacing.md, gap: 2 },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  input: {
-    flex: 1,
-    minHeight: 42,
-    maxHeight: 120,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.text,
-  },
-  sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.4 },
-  joinScreen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  joinEmoji: { fontSize: 56 },
-  joinTitle: { fontSize: 24, fontWeight: '800', color: colors.text },
-  joinDescription: { fontSize: 15, color: colors.muted, textAlign: 'center' },
-  joinCount: { fontSize: 13, color: colors.muted, marginBottom: spacing.md },
-  joinButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 14,
-  },
-  joinButtonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
-});
+const createStyles = ({ colors, radius, spacing, typography }: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: colors.background },
+    inner: { flex: 1, width: '100%', maxWidth: maxContentWidth, alignSelf: 'center' },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    onlineBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
+    },
+    onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.online },
+    onlineText: { ...typography.caption, color: colors.muted },
+    list: { padding: spacing.md, gap: 2, flexGrow: 1 },
+    composer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: spacing.sm,
+      padding: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    input: {
+      ...typography.body,
+      flex: 1,
+      minHeight: 44,
+      maxHeight: 120,
+      paddingHorizontal: spacing.md,
+      paddingTop: 12,
+      paddingBottom: 12,
+      borderRadius: radius.lg,
+      backgroundColor: colors.surfaceAlt,
+      color: colors.text,
+    },
+    joinScreen: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.lg,
+      gap: spacing.sm,
+      backgroundColor: colors.background,
+    },
+    joinEmoji: { fontSize: 64 },
+    joinTitle: { ...typography.title, color: colors.text, textAlign: 'center' },
+    joinDescription: { ...typography.body, color: colors.muted, textAlign: 'center' },
+    joinButton: {
+      alignSelf: 'stretch',
+      marginTop: spacing.md,
+      maxWidth: 420,
+      width: '100%',
+    },
+  });
